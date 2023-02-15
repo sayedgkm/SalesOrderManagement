@@ -155,16 +155,24 @@ else
     public SalesOrderDTO salesOrderDTO;
     private bool isDataLoading = true;
 
+    protected override void OnParametersSet()
+    {
+        if (SalesOrderId ==  0)
+        {
+            salesOrderDTO = new SalesOrderDTO();
+            salesOrderDTO.Windows = new List<WindowDTO>();
+            salesOrderDTO.Windows.Add(GetDummyWindow());
+        }
+    }
+
     protected override async Task OnInitializedAsync()
     {
         if (SalesOrderId == 0)
         {
-
             salesOrderDTO = new SalesOrderDTO();
             salesOrderDTO.Windows = new List<WindowDTO>();
             salesOrderDTO.Windows.Add(GetDummyWindow());
             StateHasChanged();
-
         }
         else
         {

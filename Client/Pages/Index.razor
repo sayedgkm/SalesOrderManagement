@@ -16,7 +16,7 @@
 {
     @if (!isAnyDataFound)
     {
-        <p><em>No Sales Order found. Add Orders from here.</em></p>
+        <p><em>No Sales Order found. Add Orders from <a href="" @onclick="@AddNewOrder" @onclick:preventDefault>here.</a></em></p>
     }
     else
     {
@@ -86,5 +86,8 @@
         UriHelper.NavigateTo($"SalesOrderDetails/{id}");
     }
 
+    private void AddNewOrder() {
+        UriHelper.NavigateTo($"AddEditSalesOrder/{0}");
+    }
 }
 

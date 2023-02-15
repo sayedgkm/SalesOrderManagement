@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using SalesOrderManagement.Core.Domain;
+using SalesOrderManagement.Data.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -35,6 +36,7 @@ namespace SalesOrderManagement.Data.DBContext
 
             base.OnModelCreating(modelBuilder);
 
+            modelBuilder.Seed();
         }
     }
 }
