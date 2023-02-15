@@ -1,0 +1,90 @@
+﻿@page "/"
+
+@using SalesOrderManagement.Shared
+@inject HttpClient Http
+@inject NavigationManager UriHelper
+@inject IJSRuntime JsRuntime
+
+<PageTitle>Home</PageTitle>
+
+<h1>Sales Orders</h1>
+
+@if (isDataLoading == true)
+{
+    <p><em>Loading...</em></p>
+} else
+{
+    @if (!isAnyDataFound)
+    {
+        <p><em>No Sales Order found. Add Orders from here.</em></p>
+    }
+    else
+    {
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>State</th>
+                    <th>CratedON</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var order in actionResult.Response)
+                {
+                    <tr>
+                        <td>@order.Name</td>
+                        <td>@order.State</td>
+                        <td>@order.CreatedOn?.ToShortDateString()</td>
+                        <td>
+                            <button type="button" class="btn btn-primary" @onclick="()=>OnViewDetails(order.SalesOrderID)" title="View Details">
+                                <i class="far fa-eye"></i>
+                            </button>
+                            <button type="button" class="btn btn-success" title="Edit" @onclick="()=>OnEdit(order.SalesOrderID)"><i class="fas fa-edit"></i></button>
+                            <button type="button" class="btn btn-danger" title="Delete" @onclick="()=>Delete(order.SalesOrderID)"><i class="far fa-trash-alt"></i></button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@code {
+    public ActionResultDTO<List<SalesOrderDTO>> actionResult;
+    private bool isAnyDataFound = true;
+    private bool isDataLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        actionResult = await Http.GetFromJsonAsync<ActionResultDTO<List<SalesOrderDTO>>>("api/SalesOrders");
+        isDataLoading = false;
+        if (actionResult.Response.Count == 0)
+        {
+            isAnyDataFound = false;
+        }
+    }
+
+    private async void Delete(int id)
+    {
+        bool confirmed = await JsRuntime.InvokeAsync<bool>("confirm", "Are you sure?");
+        if (confirmed)
+        {
+            await Http.DeleteAsync($"api/SalesOrder/{id}");
+            actionResult.Response = actionResult.Response.Where(s => s.SalesOrderID != id).ToList();
+            StateHasChanged();
+        }
+    }
+
+    private void OnEdit(int id)
+    {
+        UriHelper.NavigateTo($"AddEditSalesOrder/{id}");
+    }
+
+    private void OnViewDetails(int id)
+    {
+        UriHelper.NavigateTo($"SalesOrderDetails/{id}");
+    }
+
+}
+

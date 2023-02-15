@@ -1,0 +1,319 @@
+﻿@page "/AddEditSalesOrder"
+@page "/AddEditSalesOrder/{SalesOrderId:int}"
+
+
+@using SalesOrderManagement.Shared
+@inject HttpClient Http
+@inject NavigationManager UriHelper
+@inject IJSRuntime JsRuntime
+<h3 class="text-center">@(@SalesOrderId == 0 ? "Add Sales Order" : "Edit Sales Order")</h3>
+@if (isDataLoading)
+{
+    <p>Loading.....</p>
+}
+else
+{
+    <div class="row mt-3">
+        <div class="col padding-right-0">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-5 border-right-1">
+                            Sales Order Name
+                        </div>
+                        <div class="col-md-7">
+                            <input form="Name" class="form-control @(@salesOrderDTO.IsNameValid? "": "border-2px-red")" @bind="@salesOrderDTO.Name" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col padding-left-0">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-5 border-right-1">
+                            State
+                        </div>
+                        <div class="col-md-7">
+                            <input form="Name" class="form-control @(@salesOrderDTO.IsStateValid? "": "border-2px-red")" @bind="@salesOrderDTO.State" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div>
+        <h4 class="mt-3">List of Windows</h4>
+    </div>
+
+    <div class="container-height">
+        <table class="table table-bordered">
+            <thead class="thead-light">
+                    <tr>
+                        <th></th>
+                        <th>Name</th>
+                        <th>Quantity</th>
+                        <th>TotalSubElements</th>
+                        <th>Action</th>
+                    </tr>
+            </thead>
+            <tbody>
+            @if (salesOrderDTO.Windows != null)
+                {
+                @foreach (var window in salesOrderDTO.Windows)
+                {
+                    <tr class="@(@window.IsExpanded? "selected-row": "")">
+                            <td @onclick="()=> ExpandOrCollapseRow(window)" class="text-center">
+                                <button class="btn">
+                                    @if(window.IsExpanded)
+                                    {
+                                        <i class="fa-solid fa-chevron-up"></i>
+                                    }
+                                    else
+                                    {
+                                        <i class="fa-solid fa-chevron-down"></i>
+                                    }
+                                </button>
+                        </td>
+                            <td><input form="wName" class="form-control @(@window.IsNameValid? "": "border-2px-red")" @bind="@window.Name" /></td>
+                            <td><input type="number" form="Quantity" class="form-control  @(@window.IsQuantityValid? "": "border-2px-red")" @bind="@window.Quantity" /></td>
+                        <td>@(window.SubElements?.Count)</td> 
+                        <td>
+                            <button type="button" class="btn red" @onclick="()=>RemoveWindowLine(window)"><i class="fa-solid fa-circle-xmark"></i></button>
+                        </td>
+                    </tr>
+               
+                    <tr class="@(@window.IsExpanded? "": "display-none")">
+                        <td colspan="12">
+                            <div>
+                                <table calss="table table-bordered width-100" style="width: 100%">
+                                    <thead>
+                                        <tr>
+                                            <th class="nested-col-border nested-col">Element Type</th>
+                                        <th class="nested-col-border">Width</th>
+                                        <th class="nested-col-border">Height</th>
+                                        <th class="nested-col-border">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @if (window.SubElements != null)
+                                        {
+                                            foreach (var element in window.SubElements)
+                                            {
+                                                <tr>
+                                                    <td class="nested-col-border nested-col">
+                                                       <select @bind="@element.ElementType">
+                                                            <option value="Window">Window</option>
+                                                            <option value="Door">Door</option>
+                                                        </select>    
+                                                    </td>
+                                                        <td class="nested-col-border"><input type="number" form="Name" class="form-control @(@element.IsWidthValid? "": "border-2px-red")" @bind="@element.Width" /></td>
+                                                        <td class="nested-col-border"><input type="number" form="Name" class="form-control @(@element.IsHeightValid? "": "border-2px-red")" @bind="@element.Height" /></td>
+                                                    <td class="nested-col-border">
+                                                       <button class="btn red" @onclick="()=>DeleteElement(window, element)"><i class="fa-solid fa-circle-xmark"></i></button>
+                                                    </td>
+                                                
+                                                </tr>
+                                            }
+                                        }
+
+                                        <tr>
+                                            <td colspan="12" class="text-center">
+                                                    <button class="btn btn-primary margin-5" @onclick="()=>AddElement(window)"><i class="fa-solid fa-circle-plus"><span class="margin-left-5 bnt-font">Add New Element</span></i></button>
+                                            </td>
+                                        </tr>
+                                        </tbody>
+                                </table>
+                            </div>
+                        </td>
+                    </tr>
+                
+                }
+            }
+            <tr>
+                <td colspan="12" class="text-center">
+                        <button class="btn btn-primary margin-5" @onclick="()=>AddWindowLine()"><i class="fa-solid fa-circle-plus"><span class="margin-left-5 bnt-font">Add New Window</span></i></button>
+                </td>
+            </tr>
+        </tbody>
+        </table>
+    </div>
+    <div class="text-center">
+        <button type="button" class="btn btn-primary text-center" @onclick="()=>SaveChanges()">
+            <i class="fa-solid fa-floppy-disk"></i> <span class="margin-left-5 bnt-font">@(@SalesOrderId == 0 ? "Save Sales Order" : "Update Sales Order")</span>
+        </button>
+    </div>
+}
+
+@code {
+
+    [Parameter]
+    public int SalesOrderId { get; set; }
+
+    public SalesOrderDTO salesOrderDTO;
+    private bool isDataLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (SalesOrderId == 0)
+        {
+
+            salesOrderDTO = new SalesOrderDTO();
+            salesOrderDTO.Windows = new List<WindowDTO>();
+            salesOrderDTO.Windows.Add(GetDummyWindow());
+            StateHasChanged();
+
+        }
+        else
+        {
+            ActionResultDTO<SalesOrderDTO> actionResult =
+                await Http.GetFromJsonAsync<ActionResultDTO<SalesOrderDTO>>($"api/SalesOrder/{SalesOrderId}");
+            if (actionResult.Response==null || actionResult.StatusCode != ResponseStatusCodeDTO.Success)
+            {
+                await JsRuntime.InvokeAsync<bool>("alert", "Something went wrong. Try again.");
+            } else
+            {
+                salesOrderDTO = actionResult.Response;
+            }
+        }
+
+        isDataLoading = false;
+    }
+
+    private void AddWindowLine()
+    {
+        if(salesOrderDTO.Windows.Count > 0) {
+            salesOrderDTO.Windows.Last().IsExpanded = false;
+        }
+        salesOrderDTO.Windows.Add(GetDummyWindow());
+    }
+
+    private void RemoveWindowLine(WindowDTO window)
+    {
+        salesOrderDTO.Windows.Remove(window);
+    }
+
+    private void AddElement(WindowDTO window)
+    {
+        int id = salesOrderDTO.Windows.IndexOf(window);
+        salesOrderDTO.Windows[id].SubElements.Add(GetDummySubElement());
+    }
+
+    private void DeleteElement(WindowDTO window, SubElementDTO element)
+    {
+        int id = salesOrderDTO.Windows.IndexOf(window);
+        salesOrderDTO.Windows[id].SubElements.Remove(element);
+    }
+
+    private async void SaveChanges()
+    {
+        bool isValid = ValidateSalesModel();
+        if (!isValid)
+        {
+            
+        }
+        else
+        {
+
+            if (SalesOrderId == 0)
+            {
+                var resp = await Http.PostAsJsonAsync($"api/SalesOrder", salesOrderDTO);
+            }
+            else
+            {
+                var resp = await Http.PutAsJsonAsync($"api/SalesOrder", salesOrderDTO);
+            }
+            UriHelper.NavigateTo("/");
+        }
+    }
+
+    private void ExpandOrCollapseRow(WindowDTO window)
+    {
+        window.IsExpanded = !window.IsExpanded;
+    }
+
+    private WindowDTO GetDummyWindow() {
+        WindowDTO windowDTO = new WindowDTO() { IsExpanded = true };
+              
+        windowDTO.SubElements = new List<SubElementDTO>();
+        windowDTO.SubElements.Add(GetDummySubElement());
+        return windowDTO;
+    }
+
+    private SubElementDTO GetDummySubElement() {
+        SubElementDTO subElementDTO = new SubElementDTO();
+        return subElementDTO;
+    }
+
+    private bool ValidateSalesModel() {
+        bool isValid = true;
+
+        if (string.IsNullOrEmpty(salesOrderDTO.Name)) {
+            isValid = false;
+            salesOrderDTO.IsNameValid = false;
+        } else {
+            salesOrderDTO.IsNameValid = true;
+        }
+
+        if (string.IsNullOrEmpty(salesOrderDTO.State))
+        {
+            isValid = false;
+            salesOrderDTO.IsStateValid = false;
+        } else
+        {
+            salesOrderDTO.IsStateValid = true;
+        }
+
+        salesOrderDTO.Windows.ToList().ForEach(w =>
+        {
+            if(string.IsNullOrEmpty(w.Name)) {
+                isValid = false;
+                w.IsNameValid = false;
+            } else {
+                w.IsNameValid = true;
+            }
+
+            if(w.Quantity == null || w.Quantity <= 0) {
+                isValid = false;
+                w.IsQuantityValid = false;
+            } else {
+                w.IsQuantityValid = true;
+            }
+
+            w.SubElements.ToList().ForEach(s =>
+            {
+
+                if (s.Width == null || s.Width <= 0)
+                {
+                    isValid = false;
+                    s.IsWidthValid = false;
+                    w.IsExpanded = true;
+                }
+                else
+                {
+                    s.IsWidthValid = true;
+                    w.IsExpanded = false;
+                }
+
+                if (s.Height==null || s.Height <= 0)
+                {
+                    isValid = false;
+                    s.IsHeightValid = false;
+                    w.IsExpanded = true;
+                }
+                else
+                {
+                    s.IsHeightValid = true;
+                    w.IsExpanded = s.IsWidthValid? false : true;
+                }
+
+            });
+
+        });
+
+        return isValid;
+
+    }
+}
